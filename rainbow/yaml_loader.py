@@ -29,9 +29,13 @@
 import yaml
 import re
 from rainbow.datasources.base import DataCollectionPointer
-
+import os.path
 
 class RainbowYamlLoader(yaml.Loader):
+    @staticmethod
+    def get_path(loader, path):
+        return os.path.join(os.path.dirname(loader.name), path)
+
     @staticmethod
     def yaml_pointer(loader, node):
         """
@@ -51,8 +55,8 @@ class RainbowYamlLoader(yaml.Loader):
 
         return DataCollectionPointer(value)
 
-    @staticmethod
-    def yaml_file(loader, node):
+    @classmethod
+    def yaml_file(cls, loader, node):
         """
         Load file content as string to YAML
 
@@ -62,7 +66,7 @@ class RainbowYamlLoader(yaml.Loader):
         :return: File content as string
         """
 
-        value = loader.construct_scalar(node)
+        value = cls.get_path(loader, loader.construct_scalar(node))
         with open(value) as f:
             return f.read()
 
@@ -77,10 +81,10 @@ class RainbowYamlLoader(yaml.Loader):
         :return: File content as base64 encoded string
         """
 
-        return cls.yaml_file(loader, node).encode('base64')
+        return cls.yaml_file(cls, loader, node).encode('base64')
 
-    @staticmethod
-    def yaml_yaml(loader, node):
+    @classmethod
+    def yaml_yaml(cls, loader, node):
         """
         Yo dawg, we heard you like YAML...
         Same as yaml_file, but returns a yaml decoded data
@@ -97,13 +101,14 @@ class RainbowYamlLoader(yaml.Loader):
             yaml_file = template_path
             key = None
 
+        yaml_file = cls.get_path(loader, yaml_file)
+
         with open(yaml_file) as f:
             template = RainbowYamlLoader(f).get_data()
-            
+
         if key:
             template = template[key]
         return template
-
 
     def __init__(self, *args, **kwargs):
         self.add_constructor('!file', self.__class__.yaml_file)
